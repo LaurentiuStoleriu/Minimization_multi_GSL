@@ -1,2 +1,2 @@
 # Minimization_multi_GSL
-![]Graph1.jpg
+![](Graph1.jpg)

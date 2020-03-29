@@ -3,22 +3,21 @@
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_multimin.h>
 #include <random>
-#define NMAX 5
-#define l 0.6
+constexpr int NMAX = 5;
+constexpr double l = 0.6;
 
 
-double x[NMAX], A = 1.0, k = 0;
-double p[11], r[11];
+double A = 1.0, k = 0;
+double p[NMAX], r[NMAX];	// sirurile de pozitii si de raze
 
-double my_f(const gsl_vector* v, void* params);
-void my_df(const gsl_vector* v, void* params, gsl_vector* df);
-void my_fdf(const gsl_vector* x, void* params, double* f, gsl_vector* df);
 double v(int k, double loco_p[]);
 double fn1(const gsl_vector q[], void* params);
+//double my_f(const gsl_vector* v, void* params);
+//void my_df(const gsl_vector* v, void* params, gsl_vector* df);
+//void my_fdf(const gsl_vector* x, void* params, double* f, gsl_vector* df);
 
 int main(void)
 {
-
 	int j;
 
 	FILE *fp;
@@ -26,9 +25,13 @@ int main(void)
 	sprintf(numefis, "E:\\Stoleriu\\C\\special\\3d\\res\\2019\\Elastic\\Minimization\\minim_%d.dat", NMAX);
 	fp = fopen(numefis, "w");
 
+	// varianta mea favorita de generat numere aleatorii conform C++11 e cu std::random_device
+	// (varianta C-clasic, cu functia rand() e invechita si n-ar mai trebui folosita)
 	std::random_device rd;
 	std::mt19937 mt(rd());
 	std::uniform_real_distribution<double> dist(-0.05, 0.05);
+	// la fiecare apel de tipul dist(mt) vom primi un double intre -0.05 si +0.05 (distrib. uniforma)
+
 
 	p[0] = 0.4 + dist(mt);
 	r[0] = 0.2;
@@ -37,7 +40,7 @@ int main(void)
 	for (j = 1; j < NMAX; j++)
 	{
 		r[j] = 0.2;
-		p[j] = (j + 1) * 0.4 + dist(mt);//p[j - 1] + l + r[j] + r[j - 1];
+		p[j] = p[j - 1] + r[j - 1] + l + r[j] + dist(mt);
 		printf("%d @ %lf\n", j, p[j]);
 		fprintf(fp, "%lf %lf ", p[j], v(j, p));
 	}
@@ -45,7 +48,7 @@ int main(void)
 
 	const gsl_multimin_fminimizer_type* T = gsl_multimin_fminimizer_nmsimplex2rand;
 	gsl_multimin_fminimizer* s = NULL;
-	gsl_vector* ss, * x;
+	gsl_vector *ss, *x;
 	gsl_multimin_function minex_func;
 
 	size_t iter = 0;
@@ -117,35 +120,6 @@ int main(void)
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-double my_f(const gsl_vector* v, void* params)
-{
-	double x, y;
-	double* p = (double*)params;
-
-	x = gsl_vector_get(v, 0);
-	y = gsl_vector_get(v, 1);
-
-	return p[2] * (x - p[0]) * (x - p[0]) + p[3] * (y - p[1]) * (y - p[1]) + p[4];
-}
-
-void my_df(const gsl_vector* v, void* params, gsl_vector* df)
-{
-	double x, y;
-	double* p = (double*)params;
-
-	x = gsl_vector_get(v, 0);
-	y = gsl_vector_get(v, 1);
-
-	gsl_vector_set(df, 0, 2.0 * p[2] * (x - p[0]));
-	gsl_vector_set(df, 1, 2.0 * p[3] * (y - p[1]));
-}
-
-void my_fdf(const gsl_vector* x, void* params, double* f, gsl_vector* df)
-{
-	*f = my_f(x, params);
-	my_df(x, params, df);
-}
-
 double v(int k, double loco_p[])
 {
 	return -A * sin(5 * loco_p[k] * M_PI);
@@ -173,3 +147,33 @@ double fn1(const gsl_vector q[], void* params)
 	return f;
 }
 
+// nefolosit: doar pentru doua
+
+// double my_f(const gsl_vector* v, void* params)
+// {
+// 	double x, y;
+// 	double* p = (double*)params;
+// 
+// 	x = gsl_vector_get(v, 0);
+// 	y = gsl_vector_get(v, 1);
+// 
+// 	return p[2] * (x - p[0]) * (x - p[0]) + p[3] * (y - p[1]) * (y - p[1]) + p[4];
+// }
+// 
+// void my_df(const gsl_vector* v, void* params, gsl_vector* df)
+// {
+// 	double x, y;
+// 	double* p = (double*)params;
+// 
+// 	x = gsl_vector_get(v, 0);
+// 	y = gsl_vector_get(v, 1);
+// 
+// 	gsl_vector_set(df, 0, 2.0 * p[2] * (x - p[0]));
+// 	gsl_vector_set(df, 1, 2.0 * p[3] * (y - p[1]));
+// }
+// 
+// void my_fdf(const gsl_vector* x, void* params, double* f, gsl_vector* df)
+// {
+// 	*f = my_f(x, params);
+// 	my_df(x, params, df);
+// }

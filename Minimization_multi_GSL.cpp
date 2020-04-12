@@ -16,8 +16,8 @@ constexpr double k_el = 0.0;		// constanta elastica
 
 double p[Npart], r[Npart];	// sirurile de pozitii si de raze
 
-double v(int k, double loco_p[]);
-//double v(double loco_p);
+//double v(int k, double loco_p[]);
+double v(double loco_p);
 double fn1(const gsl_vector q[], void* params);
 
 int main(void)
@@ -119,11 +119,11 @@ int main(void)
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-double v(int k, double loco_p[])
-//double v(double loco_p)
+//double v(int k, double loco_p[])
+double v(double loco_p)
 {
-	return -A * sin(5 * loco_p[k] * M_PI);
-	//return -A * sin(5 * loco_p * M_PI);
+	//return -A * sin(5 * loco_p[k] * M_PI);
+	return -A * sin(5 * loco_p * M_PI);
 }
 
 double fn1(const gsl_vector q[], void* params)
@@ -131,22 +131,22 @@ double fn1(const gsl_vector q[], void* params)
 	(void)(params); /* avoid unused parameter warning */
 	double sv = 0, sx = 0, f;
 
-	double nou_p[Npart];				//mai rapid daca NU facem o copie locala a gsl_vector q[] la fiecare apel al functiei?
-	for (int i = 0; i < Npart; i++)
-	{
-		nou_p[i] = gsl_vector_get(q, i);
-	}
+// 	double nou_p[Npart];				//mai rapid daca NU facem o copie locala a gsl_vector q[] la fiecare apel al functiei?
+// 	for (int i = 0; i < Npart; i++)
+// 	{
+// 		nou_p[i] = gsl_vector_get(q, i);
+// 	}
 
 	for (int i = 0; i < Npart - 1; i++)
 	{
-		sv = sv + v(i, nou_p);
-		sx = sx + (nou_p[i] - nou_p[i + 1] - r[i] - r[i + 1] - l0) * (nou_p[i] - nou_p[i + 1] - r[i] - r[i + 1] - l0);
-// 		sv = sv + v(gsl_vector_get(q, i));
-//  		sx = sx + (gsl_vector_get(q, i) - gsl_vector_get(q, (i+1)) - r[i] - r[i+1] - l0) * 
-// 			      (gsl_vector_get(q, i) - gsl_vector_get(q, (i+1)) - r[i] - r[i+1] - l0);
+		//sv = sv + v(i, nou_p);
+		//sx = sx + (nou_p[i] - nou_p[i + 1] - r[i] - r[i + 1] - l0) * (nou_p[i] - nou_p[i + 1] - r[i] - r[i + 1] - l0);
+ 		sv = sv + v(gsl_vector_get(q, i));
+  		sx = sx + (gsl_vector_get(q, i) - gsl_vector_get(q, (i+1)) - r[i] - r[i+1] - l0) * 
+ 			      (gsl_vector_get(q, i) - gsl_vector_get(q, (i+1)) - r[i] - r[i+1] - l0);
 	}
-	sv += v(Npart - 1, nou_p);
-//	sv += v(gsl_vector_get(q, (Npart-1)));
+	//sv += v(Npart - 1, nou_p);
+	sv += v(gsl_vector_get(q, (Npart-1)));
 
 	f = sv + (k_el / 2.0) * sx;
 	return f;

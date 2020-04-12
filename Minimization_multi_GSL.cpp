@@ -3,6 +3,8 @@
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_multimin.h>
 #include <random>
+#include <windows.h>
+
 constexpr int Npart = 500;			// numar de particule
 constexpr int Npasi = 1000;			// numar de pasi (de pozitii de echilibru)
 constexpr double l0 = 0.6;			// lungimea resortului
@@ -14,13 +16,14 @@ constexpr double k_el = 0.0;		// constanta elastica
 
 double p[Npart], r[Npart];	// sirurile de pozitii si de raze
 
-//double v(int k, double loco_p[]);
-double v(double loco_p);
+double v(int k, double loco_p[]);
+//double v(double loco_p);
 double fn1(const gsl_vector q[], void* params);
 
 int main(void)
 {
 	int j;
+	DWORD starttime, elapsedtime;
 
 	FILE *fp;
 	char numefis[200];
@@ -44,7 +47,7 @@ int main(void)
 		r[j] = r_mic;
 	}
 
-	const gsl_multimin_fminimizer_type* T = gsl_multimin_fminimizer_nmsimplex2;
+	const gsl_multimin_fminimizer_type* T = gsl_multimin_fminimizer_nmsimplex2rand;
 	gsl_multimin_fminimizer* s = NULL;
 	gsl_vector *ss, *x;
 	gsl_multimin_function minex_func;
@@ -74,6 +77,7 @@ int main(void)
 	s = gsl_multimin_fminimizer_alloc(T, Npart);
 	gsl_multimin_fminimizer_set(s, &minex_func, x, ss);
 
+	starttime = timeGetTime();
 	//echilibru initial
 	do
 	{
@@ -93,12 +97,14 @@ int main(void)
 
 	} while (status == GSL_CONTINUE /*&& iter < 100*/);		//eliminare supapa de siguranta iter<100
 	
+	elapsedtime = timeGetTime() - starttime;
+	printf("\n DONE IN %ld milliseconds\n", elapsedtime);
 
 
 	fp = fopen(numefis, "w");
 	for (int i = 0; i < Npart; i++)
 	{
-		printf("%d -> %6.4lf\n", i, gsl_vector_get(s->x, i));
+		fprintf(fp, "%d %20.16lf\n", i, gsl_vector_get(s->x, i));
 	}
 	fclose(fp);
 
@@ -113,11 +119,11 @@ int main(void)
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-//double v(int k, double loco_p[])
-double v(double loco_p)
+double v(int k, double loco_p[])
+//double v(double loco_p)
 {
-	//return -A * sin(5 * loco_p[k] * M_PI);
-	return -A * sin(5 * loco_p * M_PI);
+	return -A * sin(5 * loco_p[k] * M_PI);
+	//return -A * sin(5 * loco_p * M_PI);
 }
 
 double fn1(const gsl_vector q[], void* params)
@@ -125,22 +131,22 @@ double fn1(const gsl_vector q[], void* params)
 	(void)(params); /* avoid unused parameter warning */
 	double sv = 0, sx = 0, f;
 
-// 	double nou_p[Npart];				//mai rapid daca nu facem o copie locala a gsl_vector q[] la fiecare apel al functiei?
-// 	for (int i = 0; i < Npart; i++)
-// 	{
-// 		nou_p[i] = gsl_vector_get(q, i);
-// 	}
+	double nou_p[Npart];				//mai rapid daca NU facem o copie locala a gsl_vector q[] la fiecare apel al functiei?
+	for (int i = 0; i < Npart; i++)
+	{
+		nou_p[i] = gsl_vector_get(q, i);
+	}
 
 	for (int i = 0; i < Npart - 1; i++)
 	{
-// 		sv = sv + v(i, nou_p);
-// 		sx = sx + (nou_p[i] - nou_p[i - 1] - r[i] - r[i - 1] - l0) * (nou_p[i] - nou_p[i - 1] - r[i] - r[i - 1] - l0);
-		sv = sv + v(gsl_vector_get(q, i));
- 		sx = sx + (gsl_vector_get(q, i) - gsl_vector_get(q, (i+1)) - r[i] - r[i+1] - l0) * 
-			      (gsl_vector_get(q, i) - gsl_vector_get(q, (i+1)) - r[i] - r[i+1] - l0);
+		sv = sv + v(i, nou_p);
+		sx = sx + (nou_p[i] - nou_p[i + 1] - r[i] - r[i + 1] - l0) * (nou_p[i] - nou_p[i + 1] - r[i] - r[i + 1] - l0);
+// 		sv = sv + v(gsl_vector_get(q, i));
+//  		sx = sx + (gsl_vector_get(q, i) - gsl_vector_get(q, (i+1)) - r[i] - r[i+1] - l0) * 
+// 			      (gsl_vector_get(q, i) - gsl_vector_get(q, (i+1)) - r[i] - r[i+1] - l0);
 	}
-//	sv += v(Npart - 1, nou_p);
-	sv += v(gsl_vector_get(q, (Npart-1)));
+	sv += v(Npart - 1, nou_p);
+//	sv += v(gsl_vector_get(q, (Npart-1)));
 
 	f = sv + (k_el / 2.0) * sx;
 	return f;

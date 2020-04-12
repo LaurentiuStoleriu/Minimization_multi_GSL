@@ -97,7 +97,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>C:\gsl-2.6\lib\Win32\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>cblas.lib;gsl.lib</AdditionalDependencies>
+      <AdditionalDependencies>cblas.lib;gsl.lib;winmm.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -114,7 +114,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>cblas.lib;gsl.lib</AdditionalDependencies>
+      <AdditionalDependencies>cblas.lib;gsl.lib;winmm.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>C:\gsl-2.6\lib\x64\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
@@ -137,7 +137,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>C:\gsl-2.6\lib\Win32\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>cblas.lib;gsl.lib</AdditionalDependencies>
+      <AdditionalDependencies>cblas.lib;gsl.lib;winmm.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -158,7 +158,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>cblas.lib;gsl.lib</AdditionalDependencies>
+      <AdditionalDependencies>cblas.lib;gsl.lib;winmm.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>C:\gsl-2.6\lib\x64\Release</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>

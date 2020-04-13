@@ -3,7 +3,7 @@
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_multimin.h>
-#define NMAX 50
+#define NMAX 1000
 
 FILE* fout;
 const char output[] = "iesire.txt";

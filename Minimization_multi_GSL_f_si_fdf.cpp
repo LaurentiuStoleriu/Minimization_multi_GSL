@@ -52,10 +52,17 @@ int main(void)
 		r[j] = r_mic;
 	}
 
+#ifdef metode_fdf
 	const gsl_multimin_fdfminimizer_type *T = gsl_multimin_fdfminimizer_conjugate_fr;
 	gsl_multimin_fdfminimizer* s;
 	gsl_vector* x;
 	gsl_multimin_function_fdf minex_func;
+#else
+ 	const gsl_multimin_fminimizer_type *T = gsl_multimin_fminimizer_nmsimplex2rand;
+ 	gsl_multimin_fminimizer *s = NULL;
+	gsl_vector *ss, *x;
+	gsl_multimin_function minex_func;
+#endif
 
 	size_t iter = 0;
 	int status;
@@ -68,16 +75,29 @@ int main(void)
 		gsl_vector_set(x, i, p[i]);
 	}
 
+#ifndef metode_fdf 
+	/* Set initial step sizes */
+	ss = gsl_vector_alloc(Npart);		// pentru metode bazate pe gradient nu trebuie asa ceva
+	gsl_vector_set_all(ss, /*0.01*/r_mic/100.0);
+#endif
+
 	double *par = NULL;
 	/* Initialize method and iterate */
 	minex_func.n = Npart;
 	minex_func.f = fn1;
+#ifdef metode_fdf
 	minex_func.df = dfn1;
 	minex_func.fdf = fdfn1;
+#endif
 	minex_func.params = par;
 
+#ifdef metode_fdf
 	s = gsl_multimin_fdfminimizer_alloc(T, Npart);
 	gsl_multimin_fdfminimizer_set(s, &minex_func, x, 0.01, 1.0e-4);
+#else
+ 	s = gsl_multimin_fminimizer_alloc(T, Npart);
+ 	gsl_multimin_fminimizer_set(s, &minex_func, x, ss);
+#endif
 
 	//////////////////////////////////////////////////////////////////////////
 	//echilibru initial
@@ -86,14 +106,27 @@ int main(void)
 	do
 	{
 		iter++;
-
+#ifdef metode_fdf
 		status = gsl_multimin_fdfminimizer_iterate(s);
+#else
+		status = gsl_multimin_fminimizer_iterate(s);
+#endif		
 
 		if (status)
 			break;
 
+#ifdef metode_fdf
 		status = gsl_multimin_test_gradient(s->gradient, 1.0e-3);
 		printf("%5zd %10.3e %10.3e f() = %7.3f\n", iter, gsl_vector_get(s->x, 0), gsl_vector_get(s->x, 1), s->f);
+#else
+		size = gsl_multimin_fminimizer_size(s);
+		status = gsl_multimin_test_size(size, 1e-3);
+		if (!(iter % 10000))
+		{
+			printf("%5zd %10.3e %10.3e f() = %7.3f size = %.3f\n", iter, gsl_vector_get(s->x, 0), gsl_vector_get(s->x, 1), s->fval, size);
+		}
+#endif
+
 
 	} while (status == GSL_CONTINUE);
 
@@ -127,14 +160,26 @@ int main(void)
 	do
 	{
 		iter++;
+#ifdef metode_fdf
 		status = gsl_multimin_fdfminimizer_iterate(s);
-	
+#else
+		status = gsl_multimin_fminimizer_iterate(s);
+#endif		
+
 		if (status)
 			break;
 
+#ifdef metode_fdf
 		status = gsl_multimin_test_gradient(s->gradient, 1.0e-3);
 		printf("%5zd %10.3e %10.3e f() = %7.3f\n", iter, gsl_vector_get(s->x, 0), gsl_vector_get(s->x, 1), s->f);
-
+#else
+		size = gsl_multimin_fminimizer_size(s);
+		status = gsl_multimin_test_size(size, 1e-3);
+		if (!(iter % 10000))
+		{
+			printf("%5zd %10.3e %10.3e f() = %7.3f size = %.3f\n", iter, gsl_vector_get(s->x, 0), gsl_vector_get(s->x, 1), s->fval, size);
+		}
+#endif
 	} while (status == GSL_CONTINUE);
 
 	for (int i = 0; i < Npart; i++) // salvare pozitii in p[]
@@ -153,7 +198,12 @@ int main(void)
 	fclose(fp);
 
 	gsl_vector_free(x);
+#ifdef metode_fdf
 	gsl_multimin_fdfminimizer_free(s);
+#else
+ 	gsl_vector_free(ss);
+ 	gsl_multimin_fminimizer_free(s);
+#endif
 
 	return status;
 }

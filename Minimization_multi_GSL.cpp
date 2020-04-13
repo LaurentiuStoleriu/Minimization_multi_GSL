@@ -8,14 +8,14 @@
 #define metode_fdf 1
 //#undef metode_fdf
 
-constexpr int Npart = 300;				// numar de particule
+constexpr int Npart = 1000;				// numar de particule
 constexpr int Npasi = 1000;				// numar de pasi (de pozitii de echilibru)
-constexpr double l0 = 0.6;				// lungimea resortului
+constexpr double l0 = 0.4;				// lungimea resortului
 constexpr double r_mic = 0.2;			// raza mica
-constexpr double R_mare = 0.25;			// raza mare
-constexpr double A = 1.0;				// "adancimea" gropii de potential
+constexpr double R_mare = 0.4;			// raza mare
+constexpr double A = 0.1;				// "adancimea" gropii de potential
 constexpr double perioada = 5.0*M_PI;	// perioada potentialului de suprafata
-constexpr double k_el = 0.0;			// constanta elastica
+constexpr double k_el = 1.0;			// constanta elastica
 
 double p[Npart], r[Npart];	// sirurile de pozitii si de raze
 
@@ -40,6 +40,7 @@ int main(void)
 	std::random_device rd;
 	std::mt19937 mt(rd());
 	std::uniform_real_distribution<double> dist(-0.01, 0.01);
+	std::uniform_int_distribution<int> decizie(0, 1);
 	// la fiecare apel de tipul dist(mt) vom primi un double intre -0.01 si +0.01 (distrib. uniforma)
 
 
@@ -98,9 +99,10 @@ int main(void)
  	gsl_multimin_fminimizer_set(s, &minex_func, x, ss);
 #endif
 
-
-	starttime = timeGetTime();
+	//////////////////////////////////////////////////////////////////////////
 	//echilibru initial
+	//////////////////////////////////////////////////////////////////////////
+	starttime = timeGetTime();
 	do
 	{
 		iter++;
@@ -126,16 +128,72 @@ int main(void)
 #endif
 
 
-	} while (status == GSL_CONTINUE /*&& iter < 100*/);		//eliminare supapa de siguranta iter<100
-	
-	elapsedtime = timeGetTime() - starttime;
-	printf("\n DONE IN %ld milliseconds\n", elapsedtime);
+	} while (status == GSL_CONTINUE);
 
+	for (int i = 0; i < Npart; i++)
+	{
+		p[i] = gsl_vector_get(s->x, i);				// salvare pozitii in p[]
+		gsl_vector_set(x, i, p[i]);					// si in x pentru ca s->x != x
+	}
+
+	elapsedtime = timeGetTime() - starttime;
+	printf("\n echilibru initial - DONE IN %ld milliseconds\n", elapsedtime);
+
+	//////////////////////////////////////////////////////////////////////////
+	//comutari
+	//////////////////////////////////////////////////////////////////////////
+	int contor_particule_comutate = 0;
+	for (int i=0; i<Npart; i++)
+	{
+		if (decizie(mt))
+		{
+			r[i] = R_mare;
+			contor_particule_comutate++;
+		}
+	}
+	printf("am comutat %d\n", contor_particule_comutate);
+
+	status = gsl_multimin_fdfminimizer_restart(s);					// !!! neaparat restart!
+	gsl_multimin_fdfminimizer_set(s, &minex_func, x, 0.01, 1.0e-8);
+
+	starttime = timeGetTime();
+	do
+	{
+		iter++;
+#ifdef metode_fdf
+		status = gsl_multimin_fdfminimizer_iterate(s);
+#else
+		status = gsl_multimin_fminimizer_iterate(s);
+#endif		
+
+		if (status)
+			break;
+
+#ifdef metode_fdf
+		status = gsl_multimin_test_gradient(s->gradient, 1.0e-3);
+		printf("%5zd %10.3e %10.3e f() = %7.3f\n", iter, gsl_vector_get(s->x, 0), gsl_vector_get(s->x, 1), s->f);
+#else
+		size = gsl_multimin_fminimizer_size(s);
+		status = gsl_multimin_test_size(size, 1e-3);
+		if (!(iter % 10000))
+		{
+			printf("%5zd %10.3e %10.3e f() = %7.3f size = %.3f\n", iter, gsl_vector_get(s->x, 0), gsl_vector_get(s->x, 1), s->fval, size);
+		}
+#endif
+	} while (status == GSL_CONTINUE);
+
+	for (int i = 0; i < Npart; i++) // salvare pozitii in p[]
+	{
+		p[i] = gsl_vector_get(s->x, i);
+	}
+
+	elapsedtime = timeGetTime() - starttime;
+	printf("\n comutari - DONE IN %ld milliseconds\n", elapsedtime);
 
 	fp = fopen(numefis, "w");
 	for (int i = 0; i < Npart; i++)
 	{
-		fprintf(fp, "%d %20.16lf\n", i, gsl_vector_get(s->x, i));
+		fprintf(fp, "%d %20.16lf %4.2lf\n", i, p[i], r[i]);
 	}
 	fclose(fp);
 

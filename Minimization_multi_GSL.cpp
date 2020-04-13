@@ -8,14 +8,14 @@
 #define metode_fdf 1
 //#undef metode_fdf
 
-constexpr int Npart = 300;			// numar de particule
-constexpr int Npasi = 1000;			// numar de pasi (de pozitii de echilibru)
-constexpr double l0 = 0.6;			// lungimea resortului
-constexpr double r_mic = 0.2;		// raza mica
-constexpr double R_mare = 0.25;		// raza mare
-constexpr double A = 1.0;			// "adancimea" gropii de potential
-constexpr double perioada = 5.0;	// perioada potentialului de suprafata
-constexpr double k_el = 0.0;		// constanta elastica
+constexpr int Npart = 300;				// numar de particule
+constexpr int Npasi = 1000;				// numar de pasi (de pozitii de echilibru)
+constexpr double l0 = 0.6;				// lungimea resortului
+constexpr double r_mic = 0.2;			// raza mica
+constexpr double R_mare = 0.25;			// raza mare
+constexpr double A = 1.0;				// "adancimea" gropii de potential
+constexpr double perioada = 5.0*M_PI;	// perioada potentialului de suprafata
+constexpr double k_el = 0.0;			// constanta elastica
 
 double p[Npart], r[Npart];	// sirurile de pozitii si de raze
 
@@ -156,7 +156,7 @@ int main(void)
 
 double v(double loco_p)
 {
-	return -A * sin(perioada * loco_p * M_PI);
+	return -A * sin(perioada * loco_p);
 }
 
 double fn1(const gsl_vector q[], void *params)
@@ -186,7 +186,7 @@ void dfn1(const gsl_vector q[], void *params, gsl_vector *df)
 
 	xi   = gsl_vector_get(q, 0);
 	xip1 = gsl_vector_get(q, 1);
-	deriv_xi = -perioada * A * M_PI * cos(perioada * xi * M_PI) - k_el * (xip1 - xi - r[0] - r[1] - l0);
+	deriv_xi = -perioada * A * cos(perioada * xi) - k_el * (xip1 - xi - r[0] - r[1] - l0);
 	gsl_vector_set(df, 0, deriv_xi);
 
 	for (int i = 1; i < (Npart - 1); i++)
@@ -194,13 +194,13 @@ void dfn1(const gsl_vector q[], void *params, gsl_vector *df)
 		xim1 = xi;
 		xi   = xip1;
 		xip1 = gsl_vector_get(q, (i + 1));
-		deriv_xi = -perioada * A * M_PI * cos(perioada * xi * M_PI) - k_el * (r[i-1] - r[i+1] + xim1 - 2.0 * xi + xip1);
+		deriv_xi = -perioada * A * cos(perioada * xi) - k_el * (r[i-1] - r[i+1] + xim1 - 2.0 * xi + xip1);
 		gsl_vector_set(df, i, deriv_xi);
 	}
 
 	xim1 = xi;
 	xi = xip1;
-	deriv_xi = -perioada * A * M_PI * cos(perioada * xi * M_PI) + k_el * (xi - xim1 - r[Npart-2] - r[Npart-1] - l0);
+	deriv_xi = -perioada * A * cos(perioada * xi) + k_el * (xi - xim1 - r[Npart-2] - r[Npart-1] - l0);
 	gsl_vector_set(df, (Npart-1), deriv_xi);
 }
 

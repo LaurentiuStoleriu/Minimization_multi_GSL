@@ -5,20 +5,24 @@
 #include <random>
 #include <windows.h>
 
-constexpr int Npart = 500;			// numar de particule
+#define metode_fdf 1
+//#undef metode_fdf
+
+constexpr int Npart = 300;			// numar de particule
 constexpr int Npasi = 1000;			// numar de pasi (de pozitii de echilibru)
 constexpr double l0 = 0.6;			// lungimea resortului
 constexpr double r_mic = 0.2;		// raza mica
 constexpr double R_mare = 0.25;		// raza mare
 constexpr double A = 1.0;			// "adancimea" gropii de potential
+constexpr double perioada = 5.0;	// perioada potentialului de suprafata
 constexpr double k_el = 0.0;		// constanta elastica
-
 
 double p[Npart], r[Npart];	// sirurile de pozitii si de raze
 
-//double v(int k, double loco_p[]);
 double v(double loco_p);
-double fn1(const gsl_vector q[], void* params);
+double fn1(const gsl_vector q[], void *params);
+void dfn1(const gsl_vector q[], void *params, gsl_vector *df);
+void fdfn1(const gsl_vector q[], void *params, double *f, gsl_vector *df);
 
 int main(void)
 {
@@ -47,10 +51,17 @@ int main(void)
 		r[j] = r_mic;
 	}
 
-	const gsl_multimin_fminimizer_type* T = gsl_multimin_fminimizer_nmsimplex2rand;
-	gsl_multimin_fminimizer* s = NULL;
+#ifdef metode_fdf
+	const gsl_multimin_fdfminimizer_type *T = gsl_multimin_fdfminimizer_conjugate_fr;
+	gsl_multimin_fdfminimizer* s;
+	gsl_vector* x;
+	gsl_multimin_function_fdf minex_func;
+#else
+ 	const gsl_multimin_fminimizer_type *T = gsl_multimin_fminimizer_nmsimplex2rand;
+ 	gsl_multimin_fminimizer *s = NULL;
 	gsl_vector *ss, *x;
 	gsl_multimin_function minex_func;
+#endif
 
 	size_t iter = 0;
 	int status;
@@ -63,37 +74,57 @@ int main(void)
 		gsl_vector_set(x, i, p[i]);
 	}
 
+#ifndef metode_fdf 
 	/* Set initial step sizes */
-	ss = gsl_vector_alloc(Npart);
+	ss = gsl_vector_alloc(Npart);		// pentru metode bazate pe gradient nu trebuie asa ceva
 	gsl_vector_set_all(ss, /*0.01*/r_mic/100.0);
-
+#endif
 
 	double *par = NULL;
 	/* Initialize method and iterate */
 	minex_func.n = Npart;
 	minex_func.f = fn1;
+#ifdef metode_fdf
+	minex_func.df = dfn1;
+	minex_func.fdf = fdfn1;
+#endif
 	minex_func.params = par;
 
-	s = gsl_multimin_fminimizer_alloc(T, Npart);
-	gsl_multimin_fminimizer_set(s, &minex_func, x, ss);
+#ifdef metode_fdf
+	s = gsl_multimin_fdfminimizer_alloc(T, Npart);
+	gsl_multimin_fdfminimizer_set(s, &minex_func, x, 0.01, 1.0e-4);
+#else
+ 	s = gsl_multimin_fminimizer_alloc(T, Npart);
+ 	gsl_multimin_fminimizer_set(s, &minex_func, x, ss);
+#endif
+
 
 	starttime = timeGetTime();
 	//echilibru initial
 	do
 	{
 		iter++;
+#ifdef metode_fdf
+		status = gsl_multimin_fdfminimizer_iterate(s);
+#else
 		status = gsl_multimin_fminimizer_iterate(s);
+#endif		
 
 		if (status)
 			break;
 
+#ifdef metode_fdf
+		status = gsl_multimin_test_gradient(s->gradient, 1.0e-3);
+		printf("%5zd %10.3e %10.3e f() = %7.3f\n", iter, gsl_vector_get(s->x, 0), gsl_vector_get(s->x, 1), s->f);
+#else
 		size = gsl_multimin_fminimizer_size(s);
 		status = gsl_multimin_test_size(size, 1e-3);
-
 		if (!(iter % 10000))
 		{
 			printf("%5zd %10.3e %10.3e f() = %7.3f size = %.3f\n", iter, gsl_vector_get(s->x, 0), gsl_vector_get(s->x, 1), s->fval, size);
 		}
+#endif
+
 
 	} while (status == GSL_CONTINUE /*&& iter < 100*/);		//eliminare supapa de siguranta iter<100
 	
@@ -109,8 +140,12 @@ int main(void)
 	fclose(fp);
 
 	gsl_vector_free(x);
-	gsl_vector_free(ss);
-	gsl_multimin_fminimizer_free(s);
+#ifdef metode_fdf
+	gsl_multimin_fdfminimizer_free(s);
+#else
+ 	gsl_vector_free(ss);
+ 	gsl_multimin_fminimizer_free(s);
+#endif
 
 	return status;
 }
@@ -119,52 +154,58 @@ int main(void)
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-//double v(int k, double loco_p[])
 double v(double loco_p)
 {
-	//return -A * sin(5 * loco_p[k] * M_PI);
-	return -A * sin(5 * loco_p * M_PI);
+	return -A * sin(perioada * loco_p * M_PI);
 }
 
-double fn1(const gsl_vector q[], void* params)
+double fn1(const gsl_vector q[], void *params)
 {
 	(void)(params); /* avoid unused parameter warning */
 	double sv = 0, sx = 0, f;
-
-// 	double nou_p[Npart];				//mai rapid daca NU facem o copie locala a gsl_vector q[] la fiecare apel al functiei?
-// 	for (int i = 0; i < Npart; i++)
-// 	{
-// 		nou_p[i] = gsl_vector_get(q, i);
-// 	}
-
-	for (int i = 0; i < Npart - 1; i++)
+	double xi, xip1;
+	
+	for (int i = 0; i < (Npart - 1); i++)
 	{
-		//sv = sv + v(i, nou_p);
-		//sx = sx + (nou_p[i] - nou_p[i + 1] - r[i] - r[i + 1] - l0) * (nou_p[i] - nou_p[i + 1] - r[i] - r[i + 1] - l0);
- 		sv = sv + v(gsl_vector_get(q, i));
-  		sx = sx + (gsl_vector_get(q, i) - gsl_vector_get(q, (i+1)) - r[i] - r[i+1] - l0) * 
- 			      (gsl_vector_get(q, i) - gsl_vector_get(q, (i+1)) - r[i] - r[i+1] - l0);
+		xi = gsl_vector_get(q, i);
+		xip1 = gsl_vector_get(q, (i + 1));
+ 		sv = sv + v(xi);
+  		sx = sx + (xip1 - xi - r[i] - r[i+1] - l0) * (xip1 - xi - r[i] - r[i+1] - l0);
 	}
-	//sv += v(Npart - 1, nou_p);
+
 	sv += v(gsl_vector_get(q, (Npart-1)));
 
 	f = sv + (k_el / 2.0) * sx;
 	return f;
 }
 
-// void dfn1(const gsl_vector q[], void* params, gsl_vector* df)
-// {
-// 	(void)(params); /* avoid unused parameter warning */
-// 
-// 	for (int i = 0; i < Npart - 1; i++)
-// 	{
-// 
-// 		sv = sv + v(gsl_vector_get(q, i));
-// 		sx = sx + (gsl_vector_get(q, i) - gsl_vector_get(q, (i - 1)) - r[i] - r[i - 1] - l0) *
-// 			(gsl_vector_get(q, i) - gsl_vector_get(q, (i - 1)) - r[i] - r[i - 1] - l0);
-// 	}
-// 	//	sv += v(Npart - 1, nou_p);
-// 	sv += v(gsl_vector_get(q, (Npart - 1)));
-// 
-// 
-// }
+void dfn1(const gsl_vector q[], void *params, gsl_vector *df)
+{
+	(void)(params); /* avoid unused parameter warning */
+	double xim1, xi, xip1, deriv_xi;
+
+	xi   = gsl_vector_get(q, 0);
+	xip1 = gsl_vector_get(q, 1);
+	deriv_xi = -perioada * A * M_PI * cos(perioada * xi * M_PI) - k_el * (xip1 - xi - r[0] - r[1] - l0);
+	gsl_vector_set(df, 0, deriv_xi);
+
+	for (int i = 1; i < (Npart - 1); i++)
+	{
+		xim1 = xi;
+		xi   = xip1;
+		xip1 = gsl_vector_get(q, (i + 1));
+		deriv_xi = -perioada * A * M_PI * cos(perioada * xi * M_PI) - k_el * (r[i-1] - r[i+1] + xim1 - 2.0 * xi + xip1);
+		gsl_vector_set(df, i, deriv_xi);
+	}
+
+	xim1 = xi;
+	xi = xip1;
+	deriv_xi = -perioada * A * M_PI * cos(perioada * xi * M_PI) + k_el * (xi - xim1 - r[Npart-2] - r[Npart-1] - l0);
+	gsl_vector_set(df, (Npart-1), deriv_xi);
+}
+
+void fdfn1(const gsl_vector q[], void *params, double *f, gsl_vector *df)
+{
+	*f = fn1(q, params);
+	dfn1(q, params, df);
+}

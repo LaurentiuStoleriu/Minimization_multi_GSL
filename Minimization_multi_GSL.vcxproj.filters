@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Minimization_multi_GSL.cpp">
+    <ClCompile Include="Minimization_multi_GSL_MHL.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

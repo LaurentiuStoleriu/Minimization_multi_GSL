@@ -8,7 +8,7 @@
 #define metode_fdf 1
 //#undef metode_fdf
 
-constexpr int Npart = 1000;				// numar de particule
+constexpr int Npart = 500;				// numar de particule
 constexpr int Npasi = 1000;				// numar de pasi (de pozitii de echilibru)
 constexpr double l0 = 0.4;				// lungimea resortului
 constexpr double r_mic = 0.2;			// raza mica
@@ -31,9 +31,6 @@ int main(void)
 
 	FILE *fp;
 	char numefis[200];
-	sprintf(numefis, "E:\\Stoleriu\\C\\special\\3d\\res\\2019\\Elastic\\Minimization\\minim_%d.dat", Npart);
-	fp = fopen(numefis, "w");
-	fclose(fp);
 
 	// varianta mea favorita de generat numere aleatorii conform C++11 e cu std::random_device
 	// (varianta C-clasic, cu functia rand() e invechita si n-ar mai trebui folosita)
@@ -48,8 +45,8 @@ int main(void)
 	r[0] = r_mic;
 	for (j = 1; j < Npart; j++)
 	{
-		p[j] = p[j - 1] + r[j - 1] + l0 + r[j] /*+ dist(mt)*/;
 		r[j] = r_mic;
+		p[j] = p[j - 1] + r[j - 1] + l0 + r[j] /*+ dist(mt)*/;
 	}
 
 	const gsl_multimin_fdfminimizer_type *T = gsl_multimin_fdfminimizer_conjugate_fr;
@@ -106,18 +103,28 @@ int main(void)
 	elapsedtime = timeGetTime() - starttime;
 	printf("\n echilibru initial - DONE IN %ld milliseconds\n", elapsedtime);
 
+	sprintf(numefis, "E:\\Stoleriu\\C\\special\\3d\\res\\2019\\Elastic\\Minimization\\minim_%d.dat", Npart);
+	fp = fopen(numefis, "w");
+	for (int i = 0; i < Npart; i++)
+	{
+		fprintf(fp, "%d %20.16lf %4.2lf\n", i, p[i], r[i]);
+	}
+	fclose(fp);
+
 	//////////////////////////////////////////////////////////////////////////
 	//comutari
 	//////////////////////////////////////////////////////////////////////////
 	int contor_particule_comutate = 0;
-	for (int i=0; i<Npart; i++)
-	{
-		if (decizie(mt))
-		{
-			r[i] = R_mare;
-			contor_particule_comutate++;
-		}
-	}
+// 	for (int i=0; i<Npart; i++)
+// 	{
+// 		if (decizie(mt))
+// 		{
+// 			r[i] = R_mare;
+// 			contor_particule_comutate++;
+// 		}
+// 	}
+	r[5] = R_mare;
+	contor_particule_comutate++;
 	printf("am comutat %d\n", contor_particule_comutate);
 
 	status = gsl_multimin_fdfminimizer_restart(s);					// !!! neaparat restart!
@@ -145,6 +152,7 @@ int main(void)
 	elapsedtime = timeGetTime() - starttime;
 	printf("\n comutari - DONE IN %ld milliseconds\n", elapsedtime);
 
+	sprintf(numefis, "E:\\Stoleriu\\C\\special\\3d\\res\\2019\\Elastic\\Minimization\\minim_%d_sw.dat", Npart);
 	fp = fopen(numefis, "w");
 	for (int i = 0; i < Npart; i++)
 	{
@@ -171,14 +179,17 @@ double fn1(const gsl_vector q[], void *params)
 {
 	(void)(params); /* avoid unused parameter warning */
 	double sv = 0, sx = 0, f;
-	double xi, xip1;
+	double xi, xip1, delta;
 	
+	xi = gsl_vector_get(q, 0);
 	for (int i = 0; i < (Npart - 1); i++)
 	{
-		xi = gsl_vector_get(q, i);
+		//xi = gsl_vector_get(q, i);
 		xip1 = gsl_vector_get(q, (i + 1));
  		sv = sv + v(xi);
-  		sx = sx + (xip1 - xi - r[i] - r[i+1] - l0) * (xip1 - xi - r[i] - r[i+1] - l0);
+		delta = (xip1 - xi - r[i] - r[i + 1] - l0);
+  		sx = sx + delta * delta;
+		xi = xip1;
 	}
 
 	sv += v(gsl_vector_get(q, (Npart-1)));

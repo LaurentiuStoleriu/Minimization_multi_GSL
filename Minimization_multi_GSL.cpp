@@ -8,12 +8,12 @@
 #define metode_fdf 1
 //#undef metode_fdf
 
-constexpr int Npart = 500;				// numar de particule
+constexpr int Npart = 6;				// numar de particule
 constexpr int Npasi = 1000;				// numar de pasi (de pozitii de echilibru)
 constexpr double l0 = 0.4;				// lungimea resortului
-constexpr double r_mic = 0.2;			// raza mica
-constexpr double R_mare = 0.4;			// raza mare
-constexpr double A = 0.1;				// "adancimea" gropii de potential
+constexpr double r_mic = 0.25;			// raza mica
+constexpr double R_mare = 0.45;			// raza mare
+constexpr double A = 0.001;				// "adancimea" gropii de potential
 constexpr double perioada = 5.0*M_PI;	// perioada potentialului de suprafata
 constexpr double k_el = 1.0;			// constanta elastica
 
@@ -123,8 +123,9 @@ int main(void)
 // 			contor_particule_comutate++;
 // 		}
 // 	}
-	r[5] = R_mare;
-	contor_particule_comutate++;
+	r[2] = R_mare;
+	r[3] = R_mare;
+	contor_particule_comutate += 2;
 	printf("am comutat %d\n", contor_particule_comutate);
 
 	status = gsl_multimin_fdfminimizer_restart(s);					// !!! neaparat restart!

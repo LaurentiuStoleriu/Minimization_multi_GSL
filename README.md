@@ -1,3 +1,3 @@
 # Minimization_multi_GSL
 ![](Graph1.jpg)
-![](Figure 2020-05-06 131650.png)
+![](Figure_2020-05-06_131650.png)

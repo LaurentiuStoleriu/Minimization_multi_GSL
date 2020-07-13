@@ -5,7 +5,7 @@
 #include <random>
 #include <windows.h>
 
-constexpr int Npart = 500;				// numar de particule
+constexpr int Npart = 10;				// numar de particule
 constexpr int Npasi = 1000;				// numar de pasi (de pozitii de echilibru)
 constexpr double l0 = 0.4;				// lungimea resortului
 constexpr double r_mic = 0.25;			// raza mica
@@ -112,11 +112,13 @@ int main(void)
 	elapsedtime = timeGetTime() - starttime;
 	printf("\n echilibru initial - DONE IN %ld milliseconds\n", elapsedtime);
 
+	// salvare stare initiala
+
 	sprintf(numefis, "E:\\Stoleriu\\C\\special\\3d\\res\\2019\\Elastic\\Minimization\\minim_%d.dat", Npart);
 	fp = fopen(numefis, "w");
 	for (int i = 0; i < Npart; i++)
 	{
-		fprintf(fp, "%d %20.16lf %4.2lf, %20.16lf\n", i, p[i], r[i], Temp[i]);
+		fprintf(fp, "%d %20.16lf %4.2lf %20.16lf\n", i, p[i], r[i], Temp[i]);
 	}
 	fclose(fp);
 
@@ -174,6 +176,15 @@ int main(void)
 		fprintf(fp, "%20.16lf %d %20.16lf\n", temperatura, contor_particule_comutate, (p[Npart-1]-p[0]));
 		fclose(fp);
 	}
+
+	// salvare stare comutata
+	sprintf(numefis, "E:\\Stoleriu\\C\\special\\3d\\res\\2019\\Elastic\\Minimization\\minim_%d_sw.dat", Npart);
+	fp = fopen(numefis, "w");
+	for (int i = 0; i < Npart; i++)
+	{
+		fprintf(fp, "%d %20.16lf %4.2lf %20.16lf\n", i, p[i], r[i], Temp[i]);
+	}
+	fclose(fp);
 
 	
 	for (double temperatura = Temp_max; temperatura >= Temp_min; temperatura -= step_temp)

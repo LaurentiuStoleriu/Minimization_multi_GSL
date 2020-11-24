@@ -5,7 +5,7 @@
 #include <random>
 #include <windows.h>
 
-constexpr int Npart = 10;				// numar de particule
+constexpr int Npart = 100;				// numar de particule
 constexpr int Npasi = 1000;				// numar de pasi (de pozitii de echilibru)
 constexpr double l0 = 0.4;				// lungimea resortului
 constexpr double r_mic = 0.25;			// raza mica
